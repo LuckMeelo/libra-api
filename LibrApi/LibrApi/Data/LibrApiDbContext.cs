@@ -1,9 +1,10 @@
-﻿using LibrApi.Data.Models;
+﻿using ApiLib.Data;
+using LibrApi.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibrApi.Data
 {
-    public class LibrApiDbContext : DbContext
+    public class LibrApiDbContext : BaseDbContext
     {
         public LibrApiDbContext(DbContextOptions options) : base(options)
         {

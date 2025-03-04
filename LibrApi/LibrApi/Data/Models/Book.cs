@@ -21,7 +21,7 @@ namespace LibrApi.Data.Models
         public string Genre { get; set; } = string.Empty;
 
         [Required]
-        public int Rating { get; set; }
+        public float Rating { get; set; }
 
         [Required]
         public DateTime PublishedDate { get; set; }
