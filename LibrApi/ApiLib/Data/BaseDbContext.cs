@@ -40,7 +40,6 @@ namespace ApiLib.Data
             });
         }
 
-
         private void ApplyChangesOnState(EntityState state, Action<EntityEntry, BaseModel> changes)
         {
             var deleteEntities = ChangeTracker.Entries().Where(x => x.State == state);

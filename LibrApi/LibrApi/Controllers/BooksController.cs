@@ -19,9 +19,8 @@ namespace LibrApi.Controllers
         {
             try
             {
-                var list = await _context.Books.Where(x => !x.Deleted).Sort("Title").ToListAsync();
+                var list = await _context.Books.Where(x => !x.Deleted).SortBy("Title").ToListAsync();
                 return Ok(list);
-
             }
             catch (ArgumentException e)
             {
