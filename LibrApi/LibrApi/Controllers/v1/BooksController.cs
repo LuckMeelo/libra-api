@@ -4,11 +4,11 @@ using LibrApi.Data;
 using LibrApi.Data.Models;
 using ApiLib.Controllers;
 using ApiLib.Extensions;
+using Asp.Versioning;
 
-namespace LibrApi.Controllers
+namespace LibrApi.Controllers.v1
 {
-    [Route("api/[controller]")]
-    [ApiController]
+    [ApiVersion(1)]
     public class BooksController : BaseController<LibrApiDbContext, Book>
     {
         public BooksController(LibrApiDbContext context) : base(context)
@@ -22,7 +22,7 @@ namespace LibrApi.Controllers
                 var list = await _context.Books.Where(x => !x.Deleted).SortBy("Title").ToListAsync();
                 return Ok(list);
             }
-            catch (ArgumentException e)
+            catch (ArgumentException _)
             {
                 return NotFound();
             }

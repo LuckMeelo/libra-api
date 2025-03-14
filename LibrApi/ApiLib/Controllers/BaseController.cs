@@ -1,12 +1,13 @@
-﻿using ApiLib.Data;
+﻿using ApiLib.Attributes;
+using ApiLib.Data;
 using ApiLib.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApiLib.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("[controller]")]
     public abstract class BaseController<TContext, TModel> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
@@ -102,8 +103,8 @@ namespace ApiLib.Controllers
             return NoContent();
         }
 
-        // Put: api/[Models]/restore
-        [HttpPut("/restore")]
+        // Put: api/[Models]/5/restore
+        [HttpPatch("{id}/restore")]
         public virtual async Task<ActionResult<TModel>> Restore(int id)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
