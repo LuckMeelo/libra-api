@@ -17,21 +17,18 @@ namespace ApiLib.Conventions
         public void Apply(ApplicationModel application)
         {
             bool enableApiVersioning = _configuration.GetValue<bool>("EnableApiVersioning");
-            string basePrefix = "api";
+            string basePrefix = _configuration.GetValue<string>("BaseApiPrefix") ?? "api";
 
-            AttributeRouteModel _routePrefix = new AttributeRouteModel(new RouteAttribute(enableApiVersioning ? $"{basePrefix}/v{{v:apiVersion}}/" : $"{basePrefix}/"));
-
+            AttributeRouteModel routePrefix = new AttributeRouteModel(new RouteAttribute(
+                enableApiVersioning ? $"{basePrefix}/v{{v:ApiVersion}}/" : $"{basePrefix}/"));
 
             foreach (var selector in application.Controllers.SelectMany(c => c.Selectors))
             {
                 if (selector.AttributeRouteModel != null)
-                {
-                    selector.AttributeRouteModel = AttributeRouteModel.CombineAttributeRouteModel(_routePrefix, selector.AttributeRouteModel);
-                }
+                    selector.AttributeRouteModel =
+                        AttributeRouteModel.CombineAttributeRouteModel(routePrefix, selector.AttributeRouteModel);
                 else
-                {
-                    selector.AttributeRouteModel = _routePrefix;
-                }
+                    selector.AttributeRouteModel = routePrefix;
             }
         }
     }

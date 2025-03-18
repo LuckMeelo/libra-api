@@ -13,19 +13,8 @@ namespace LibrApi.Controllers.v1
     {
         public BooksController(LibrApiDbContext context) : base(context)
         {
+            MaxPageSize = 2; // Edit la taille max pour la pagination
         }
 
-        public override async Task<ActionResult<IEnumerable<Book>>> GetAll()
-        {
-            try
-            {
-                var list = await _context.Books.Where(x => !x.Deleted).SortBy("Title").ToListAsync();
-                return Ok(list);
-            }
-            catch (ArgumentException _)
-            {
-                return NotFound();
-            }
-        }
     }
 }
