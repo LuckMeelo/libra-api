@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace ApiLib.Extensions
@@ -140,6 +142,54 @@ namespace ApiLib.Extensions
 
             return query;
         }
+
+        public static IQueryable<T> ApplySearchFilter<T>(this IQueryable<T> query, string key, string value)
+        {
+            var parameter = Expression.Parameter(typeof(T), "x");
+            var property = typeof(T).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance)
+                ?? throw new ArgumentException($"Property '{key}' not found on type '{typeof(T).Name}'.");
+
+            var expressions = new List<Expression>();
+
+            // Handle wildcard searches (*napoli*)
+            if (value.Contains("*"))
+            {
+                var searchValue = value.Replace("*", "%"); // Convert * to SQL-style wildcard
+                var member = Expression.Property(parameter, property);
+                var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+                if (method != null)
+                {
+                    var constant = Expression.Constant(searchValue.Trim('%'));
+                    expressions.Add(Expression.Call(member, method, constant));
+                }
+            }
+            else
+            {
+                // Handle multiple values (e.g., type=pizza,pasta)
+                var values = value.Split(',');
+
+                foreach (var val in values)
+                {
+                    if (val.TryParseValue(property.PropertyType, out var parsedValue))
+                    {
+                        var member = Expression.Property(parameter, property);
+                        var constant = Expression.Constant(parsedValue);
+                        expressions.Add(Expression.Equal(member, constant));
+                    }
+                }
+            }
+
+            if (expressions.Any())
+            {
+                var orExpression = expressions.Aggregate(Expression.OrElse);
+                var lambda = Expression.Lambda<Func<T, bool>>(orExpression, parameter);
+                query = query.Where(lambda);
+            }
+
+            return query;
+        }
+
 
     }
 }

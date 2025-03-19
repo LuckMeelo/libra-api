@@ -33,7 +33,7 @@ namespace ApiLib.Controllers
         }
      
         [HttpGet]
-        public virtual async Task<ActionResult<IEnumerable<TModel>>> GetAll([FromQuery] Dictionary<string, string> queryParams)
+        public virtual async Task<IActionResult> GetAll([FromQuery] Dictionary<string, string> queryParams)
         {
             try
             {
@@ -69,6 +69,59 @@ namespace ApiLib.Controllers
                 query = query.Skip(skip).Take(take);
 
                 AddPaginationHeaders(Request, Response, skip, take, totalItems);
+
+                // fields
+                queryParams.TryGetValue("fields", out var fields);
+
+                // Build la query finale
+                return Ok(await query.ToListAsync());
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("search")]
+        public virtual async Task<IActionResult> Search([FromQuery] Dictionary<string, string> queryParams)
+        {
+            try
+            {
+                // supprimer asc, desc, range et fields des filtres
+                var filters = queryParams
+                    .Where(kv => kv.Key != "asc" && kv.Key != "desc" && kv.Key != "range" && kv.Key != "fields")
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+
+                // query de base
+                var query = _context.Set<TModel>().Where(x => x.Deleted == false);
+
+                // filtres dynamiques
+                if (filters != null)
+                {
+                    foreach (var filter in filters)
+                    {
+                        query = query.ApplySearchFilter(filter.Key, filter.Value);
+                    }
+                }
+
+                // tri ascendant et descendant
+                queryParams.TryGetValue("asc", out var asc);
+                queryParams.TryGetValue("desc", out var desc);
+
+                query = query.ApplySortOnFields(asc, desc);
+
+                // pagination
+                queryParams.TryGetValue("range", out var range);
+                var totalItems = query.Count();
+
+                var (skip, take) = ParseRangeParameter(range, totalItems);
+                query = query.Skip(skip).Take(take);
+
+                AddPaginationHeaders(Request, Response, skip, take, totalItems);
+
+                // fields
+                queryParams.TryGetValue("fields", out var fields);
 
                 // Build la query finale
                 return Ok(await query.ToListAsync());
@@ -188,7 +241,7 @@ namespace ApiLib.Controllers
             return _context.Set<TModel>().Any(e => e.ID == id);
         }
 
-        private static (int skip, int take) ParseRangeParameter(string? range, int totalItems)
+        private (int skip, int take) ParseRangeParameter(string? range, int totalItems)
         {
             if (string.IsNullOrWhiteSpace(range))
             {
