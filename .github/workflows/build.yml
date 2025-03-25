@@ -21,10 +21,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore dependencies for ${{ matrix.projects }}
-      run: dotnet restore ./${{ matrix.projects }}/${{ matrix.projects }}.csproj
+      run: dotnet restore ./LibrApi/${{ matrix.projects }}/${{ matrix.projects }}.csproj
 
     - name: Build ${{ matrix.projects }}
-      run: dotnet build ./${{ matrix.projects }}/${{ matrix.projects }}.csproj --configuration Release --no-restore
+      run: dotnet build ./LibrApi/${{ matrix.projects }}/${{ matrix.projects }}.csproj --configuration Release --no-restore
 
     - name: Test ${{ matrix.tests_projects }}
-      run: dotnet test ./${{ matrix.tests_projects }}/${{ matrix.tests_projects }}.csproj --configuration Release --no-build --logger trx
+      run: dotnet test ./LibrApi/${{ matrix.tests_projects }}/${{ matrix.tests_projects }}.csproj --configuration Release --no-build --logger trx
