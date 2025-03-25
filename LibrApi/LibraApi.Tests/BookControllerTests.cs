@@ -10,7 +10,7 @@ using System.Diagnostics;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace LibraApi.Tests
+namespace LibrApi.Tests
 {
     public class BooksControllerTests
     {

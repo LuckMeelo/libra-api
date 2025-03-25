@@ -1,7 +1,7 @@
 using ApiLib.Extensions;
 using System.Diagnostics;
 
-namespace LibTests
+namespace ApiLib.Tests
 {
     public class StringExtensionsTests
     {
