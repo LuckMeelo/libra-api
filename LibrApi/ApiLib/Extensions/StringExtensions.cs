@@ -14,7 +14,7 @@ namespace ApiLib.Extensions
 
         public static Expression<Func<T, object>> BuildFieldAccessExpression<T>(this string field)
         {
-            var property = typeof(T).GetProperty(field, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance) ?? throw new ArgumentException($"field {field} not fount on type '{typeof(T).Name}'.");
+            var property = typeof(T).GetProperty(field, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance) ?? throw new ArgumentException($"field {field} not found on type '{typeof(T).Name}'.");
 
             var parameter = Expression.Parameter(typeof(T));
             var propertyAccess = Expression.Property(parameter, property);

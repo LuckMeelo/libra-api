@@ -2,7 +2,7 @@
 
 namespace ApiLib.Models
 {
-    public class BaseModel
+    public abstract class BaseModel
     {
         public int ID { get; set; }
 
