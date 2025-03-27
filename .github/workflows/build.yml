@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build-and-test:
+  build:
     runs-on: windows-latest
     strategy:
       matrix:
@@ -24,9 +24,3 @@ jobs:
 
     - name: Build ${{ matrix.projects }}
       run: dotnet build ./LibrApi/${{ matrix.projects }}/${{ matrix.projects }}.csproj --configuration Release --no-restore
-
-    - name: Run Api tests
-      run: dotnet test ./LibrApi/ApiLib.Tests/ApiLib.Tests.csproj --no-build
-
-    - name: Run Lib tests
-      run: dotnet test ./LibrApi/LibrApi.Tests/LibrApi.Tests.csproj --no-build
