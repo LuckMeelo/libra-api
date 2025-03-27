@@ -18,23 +18,26 @@ namespace ApiLib.Controllers
     public abstract class BaseController<TContext, TModel> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
-        protected Dictionary<string, bool> Features { get; } = new()
+        protected Dictionary<Feature, bool> Features { get; } = new()
         {
-            {Filtering, true },
-            {Sort, true },
-            {Pagination, true },
-            {PartialResponse, true }
+            {Feature.Filtering, true },
+            {Feature.Sort, true },
+            {Feature.Pagination, true },
+            {Feature.PartialResponse, true }
         };
 
+        protected enum Feature
+        {
+            Filtering,
+            Sort,
+            Pagination,
+            PartialResponse
+        }
         protected int MaxPageSize = 10; // 10 par défaut
 
-        protected static string Filtering => "Filtering";
-        protected static string Sort => "Sort";
-        protected static string Pagination => "Pagination";
-        protected static string PartialResponse => "PartialResponse";
 
-        protected bool IsFeatureEnabled(string featureName)
-           => Features.TryGetValue(featureName, out var isEnabled) && isEnabled;
+        protected bool IsFeatureEnabled(Feature feature)
+           => Features.TryGetValue(feature, out var isEnabled) && isEnabled;
 
         public BaseController(TContext context)
         {
@@ -50,22 +53,22 @@ namespace ApiLib.Controllers
                 var query = _context.Set<TModel>().Where(x => x.Deleted == false);
 
                 // Filter
-                if (IsFeatureEnabled(Filtering))
+                if (IsFeatureEnabled(Feature.Filtering))
                     query = QueryFilterBuilder(query, queryParams);
 
                 // tri ascendant et descendant
-                if (IsFeatureEnabled(Sort))
+                if (IsFeatureEnabled(Feature.Sort))
                     query = QuerySortBuilder(query, queryParams);
 
                 // pagination
-                if (IsFeatureEnabled(Pagination))
+                if (IsFeatureEnabled(Feature.Pagination))
                     query = QueryPaginationBuilder(query, queryParams);
 
                 // Build la query finale
                 var queryResult = await query.ToListAsync();
 
-                if (IsFeatureEnabled(PartialResponse))
-                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)));
+                if (IsFeatureEnabled(Feature.PartialResponse))
+                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)).ToList());
 
                 return Ok(queryResult);
             }
@@ -87,18 +90,18 @@ namespace ApiLib.Controllers
                 query = QuerySearchBuilder(query, queryParams);
 
                 // tri ascendant et descendant
-                if (IsFeatureEnabled(Sort))
+                if (IsFeatureEnabled(Feature.Sort))
                     query = QuerySortBuilder(query, queryParams);
 
                 // pagination
-                if (IsFeatureEnabled(Pagination))
+                if (IsFeatureEnabled(Feature.Pagination))
                     query = QueryPaginationBuilder(query, queryParams);
 
                 // Build la query finale
                 var queryResult = await query.ToListAsync();
 
-                if (IsFeatureEnabled(PartialResponse))
-                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)));
+                if (IsFeatureEnabled(Feature.PartialResponse))
+                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)).ToList());
 
                 return Ok(queryResult);
             }
@@ -110,7 +113,7 @@ namespace ApiLib.Controllers
 
         // GET: api/[Models]/5
         [HttpGet("{id}")]
-        public virtual async Task<ActionResult<TModel>> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
+        public virtual async Task<IActionResult> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
 
@@ -122,7 +125,7 @@ namespace ApiLib.Controllers
             {
                 return NotFound();
             }
-            if (IsFeatureEnabled(PartialResponse))
+            if (IsFeatureEnabled(Feature.PartialResponse))
                 return Ok(ApplyPartialResponse(model, queryParams));
             return Ok(model);
         }
