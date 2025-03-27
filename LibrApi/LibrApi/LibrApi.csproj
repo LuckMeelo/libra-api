@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>fbdb9a66-7c06-4d7a-9afb-d21ffd0c9c75</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DocumentationFile>ApiLibAnnotation.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

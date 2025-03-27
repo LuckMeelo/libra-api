@@ -5,6 +5,7 @@ using LibrApi.Data.Models;
 using ApiLib.Controllers;
 using ApiLib.Extensions;
 using Asp.Versioning;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace LibrApi.Controllers.v1
 {

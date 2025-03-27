@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Net.Mime;
+using System.Reflection;
 using ApiLib.Data;
 using ApiLib.Extensions;
 using ApiLib.Models;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Swashbuckle.AspNetCore.Annotations;
 using static System.Net.Mime.MediaTypeNames;
 
 
@@ -41,7 +43,11 @@ namespace ApiLib.Controllers
             _context = context;
         }
 
-        [HttpGet]
+        [HttpGet(Name = "GetAll")]
+        [SwaggerOperation(Summary = "Retrieve every book registered")]
+        [SwaggerResponse(StatusCodes.Status200OK, "The list of books")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+
         public virtual async Task<IActionResult> GetAll([FromQuery] Dictionary<string, string> queryParams)
         {
             try
@@ -76,6 +82,12 @@ namespace ApiLib.Controllers
         }
 
         [HttpGet("search")]
+        [SwaggerOperation(
+            Summary = "Search entities with full-text capabilities",
+            Description = "Performs a search operation with advanced filtering and pagination",
+            OperationId = "SearchEntities")]
+        [ProducesResponseType(typeof(IEnumerable<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public virtual async Task<IActionResult> Search([FromQuery] Dictionary<string, string> queryParams)
         {
             try
@@ -110,6 +122,13 @@ namespace ApiLib.Controllers
 
         // GET: api/[Models]/5
         [HttpGet("{id}")]
+        [SwaggerOperation(
+            Summary = "Get entity by ID",
+            Description = "Retrieves a single entity with optional field selection",
+            OperationId = "GetEntityById")]
+        [ProducesResponseType(typeof(Dictionary<string, object?>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+
         public virtual async Task<ActionResult<TModel>> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
@@ -130,6 +149,14 @@ namespace ApiLib.Controllers
         // PUT: api/[Models]/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
+        [SwaggerOperation(
+            Summary = "Update an existing entity",
+            Description = "Full update of the specified entity",
+            OperationId = "UpdateEntity")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public virtual async Task<IActionResult> Put(int id, TModel model)
         {
             if (id != model.ID)
@@ -161,6 +188,12 @@ namespace ApiLib.Controllers
         // POST: api/[Models]
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
+        [SwaggerOperation(
+            Summary = "Create a new entity",
+            Description = "Adds a new entity to the system",
+            OperationId = "CreateEntity")]
+        [SwaggerResponse(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public virtual async Task<ActionResult<TModel>> Post(TModel model)
         {
             _context.Set<TModel>().Add(model);
@@ -171,6 +204,12 @@ namespace ApiLib.Controllers
 
         // DELETE: api/[Models]/5
         [HttpDelete("{id}")]
+        [SwaggerOperation(
+            Summary = "Delete an entity permanently",
+            Description = "Physical deletion from the database",
+            OperationId = "DeleteEntity")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public virtual async Task<IActionResult> Delete(int id)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
@@ -191,6 +230,12 @@ namespace ApiLib.Controllers
 
         // Put: api/[Models]/5/restore
         [HttpPatch("{id}/restore")]
+        [SwaggerOperation(
+            Summary = "Restore a soft-deleted entity",
+            Description = "Reactivates an entity that was previously soft-deleted",
+            OperationId = "RestoreEntity")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public virtual async Task<ActionResult<TModel>> Restore(int id)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
