@@ -14,7 +14,8 @@ namespace LibrApi.Controllers.v1
         public BooksController(LibrApiDbContext context) : base(context)
         {
             //MaxPageSize = 2; // Edit la taille max pour la pagination
+            Features[Filtering] = false;
+            Features[Sort] = false;
         }
-
     }
 }

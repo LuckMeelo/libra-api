@@ -11,7 +11,6 @@ namespace ApiLib.Extensions
 {
     public static class StringExtensions
     {
-
         public static Expression<Func<T, object>> BuildFieldAccessExpression<T>(this string field)
         {
             var property = typeof(T).GetProperty(field, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance) ?? throw new ArgumentException($"field {field} not fount on type '{typeof(T).Name}'.");
@@ -22,6 +21,7 @@ namespace ApiLib.Extensions
 
             return (Expression.Lambda<Func<T, object>>(propertyToObject, parameter));
         }
+
 
         public static bool TryParseValue(this string value, Type targetType, out object? result)
         {

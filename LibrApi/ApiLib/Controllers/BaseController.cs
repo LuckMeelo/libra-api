@@ -1,20 +1,14 @@
-﻿using ApiLib.Data;
+﻿using System.Reflection;
+using ApiLib.Data;
 using ApiLib.Extensions;
 using ApiLib.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using static System.Net.Mime.MediaTypeNames;
 
-
-
-// pagination: handle not enough to return
-// editable Batch size
-// base link generation
-
-
-//
 
 namespace ApiLib.Controllers
 {
@@ -24,57 +18,56 @@ namespace ApiLib.Controllers
     public abstract class BaseController<TContext, TModel> : ControllerBase where TContext : BaseDbContext where TModel : BaseModel
     {
         protected readonly TContext _context;
+        protected Dictionary<string, bool> Features { get; } = new()
+        {
+            {Filtering, true },
+            {Sort, true },
+            {Pagination, true },
+            {PartialResponse, true }
+        };
+
         protected int MaxPageSize = 10; // 10 par défaut
 
+        protected static string Filtering => "Filtering";
+        protected static string Sort => "Sort";
+        protected static string Pagination => "Pagination";
+        protected static string PartialResponse => "PartialResponse";
+
+        protected bool IsFeatureEnabled(string featureName)
+           => Features.TryGetValue(featureName, out var isEnabled) && isEnabled;
 
         public BaseController(TContext context)
         {
             _context = context;
         }
-     
+
         [HttpGet]
         public virtual async Task<IActionResult> GetAll([FromQuery] Dictionary<string, string> queryParams)
         {
             try
             {
-                // supprimer asc, desc, range et fields des filtres
-                var filters = queryParams
-                    .Where(kv => kv.Key != "asc" && kv.Key != "desc" && kv.Key != "range" && kv.Key != "fields")
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-
                 // query de base
                 var query = _context.Set<TModel>().Where(x => x.Deleted == false);
 
-                // filtres dynamiques
-                if (filters != null)
-                {
-                    foreach (var filter in filters)
-                    {
-                        query = query.ApplyFilter(filter.Key, filter.Value);
-                    }
-                }
+                // Filter
+                if (IsFeatureEnabled(Filtering))
+                    query = QueryFilterBuilder(query, queryParams);
 
                 // tri ascendant et descendant
-                queryParams.TryGetValue("asc", out var asc);
-                queryParams.TryGetValue("desc", out var desc);
-
-                query = query.ApplySortOnFields(asc, desc);
+                if (IsFeatureEnabled(Sort))
+                    query = QuerySortBuilder(query, queryParams);
 
                 // pagination
-                queryParams.TryGetValue("range", out var range);
-                var totalItems = query.Count();
-
-                var (skip, take) = ParseRangeParameter(range, totalItems);
-                query = query.Skip(skip).Take(take);
-
-                AddPaginationHeaders(Request, Response, skip, take, totalItems);
-
-                // fields
-                queryParams.TryGetValue("fields", out var fields);
+                if (IsFeatureEnabled(Pagination))
+                    query = QueryPaginationBuilder(query, queryParams);
 
                 // Build la query finale
-                return Ok(await query.ToListAsync());
+                var queryResult = await query.ToListAsync();
+
+                if (IsFeatureEnabled(PartialResponse))
+                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)));
+
+                return Ok(queryResult);
             }
             catch (ArgumentException ex)
             {
@@ -87,44 +80,27 @@ namespace ApiLib.Controllers
         {
             try
             {
-                // supprimer asc, desc, range et fields des filtres
-                var filters = queryParams
-                    .Where(kv => kv.Key != "asc" && kv.Key != "desc" && kv.Key != "range" && kv.Key != "fields")
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-
                 // query de base
                 var query = _context.Set<TModel>().Where(x => x.Deleted == false);
 
-                // filtres dynamiques
-                if (filters != null)
-                {
-                    foreach (var filter in filters)
-                    {
-                        query = query.ApplySearchFilter(filter.Key, filter.Value);
-                    }
-                }
+                // Search
+                query = QuerySearchBuilder(query, queryParams);
 
                 // tri ascendant et descendant
-                queryParams.TryGetValue("asc", out var asc);
-                queryParams.TryGetValue("desc", out var desc);
-
-                query = query.ApplySortOnFields(asc, desc);
+                if (IsFeatureEnabled(Sort))
+                    query = QuerySortBuilder(query, queryParams);
 
                 // pagination
-                queryParams.TryGetValue("range", out var range);
-                var totalItems = query.Count();
-
-                var (skip, take) = ParseRangeParameter(range, totalItems);
-                query = query.Skip(skip).Take(take);
-
-                AddPaginationHeaders(Request, Response, skip, take, totalItems);
-
-                // fields
-                queryParams.TryGetValue("fields", out var fields);
+                if (IsFeatureEnabled(Pagination))
+                    query = QueryPaginationBuilder(query, queryParams);
 
                 // Build la query finale
-                return Ok(await query.ToListAsync());
+                var queryResult = await query.ToListAsync();
+
+                if (IsFeatureEnabled(PartialResponse))
+                    return Ok(queryResult.Select(item => ApplyPartialResponse(item, queryParams)));
+
+                return Ok(queryResult);
             }
             catch (ArgumentException ex)
             {
@@ -134,7 +110,7 @@ namespace ApiLib.Controllers
 
         // GET: api/[Models]/5
         [HttpGet("{id}")]
-        public virtual async Task<ActionResult<TModel>> GetById(int id)
+        public virtual async Task<ActionResult<TModel>> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
 
@@ -146,6 +122,8 @@ namespace ApiLib.Controllers
             {
                 return NotFound();
             }
+            if (IsFeatureEnabled(PartialResponse))
+                return Ok(ApplyPartialResponse(model, queryParams));
             return Ok(model);
         }
 
@@ -241,6 +219,105 @@ namespace ApiLib.Controllers
             return _context.Set<TModel>().Any(e => e.ID == id);
         }
 
+        // Filters
+        private IQueryable<TModel> QueryFilterBuilder(IQueryable<TModel> query, [FromQuery] Dictionary<string, string> queryParams)
+        {
+            // supprimer asc, desc, range et fields des filtres
+            var filters = queryParams
+                .Where(kv => kv.Key != "asc" && kv.Key != "desc" && kv.Key != "range" && kv.Key != "fields")
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // filtres dynamiques
+            if (filters != null)
+            {
+                foreach (var filter in filters)
+                {
+                    query = query.ApplyFilter(filter.Key, filter.Value);
+                }
+            }
+            return (query);
+        }
+
+        // Search
+        private IQueryable<TModel> QuerySearchBuilder(IQueryable<TModel> query, [FromQuery] Dictionary<string, string> queryParams)
+        {
+            // supprimer asc, desc, range et fields des filtres
+            var filters = queryParams
+                .Where(kv => kv.Key != "asc" && kv.Key != "desc" && kv.Key != "range" && kv.Key != "fields")
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            // filtres dynamiques
+            if (filters != null)
+            {
+                foreach (var filter in filters)
+                {
+                    query = query.ApplySearch(filter.Key, filter.Value);
+                }
+            }
+            return (query);
+        }
+
+        // Sort
+        private IQueryable<TModel> QuerySortBuilder(IQueryable<TModel> query, [FromQuery] Dictionary<string, string> queryParams)
+        {
+            queryParams.TryGetValue("asc", out var asc);
+            queryParams.TryGetValue("desc", out var desc);
+
+            if (asc != null || desc != null)
+                query = query.ApplySortOnFields(asc, desc);
+            return (query);
+        }
+
+        // Partial Response
+        private Dictionary<string, object?> ApplyPartialResponse(TModel item, [FromQuery] Dictionary<string, string> queryParams)
+        {
+            queryParams.TryGetValue("fields", out var fields);
+
+            if (item == null)
+            {
+                return new Dictionary<string, object?>();
+            }
+
+            if (string.IsNullOrEmpty(fields))
+            {
+                return item.GetType()
+                    .GetProperties(BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.Name != "LazyLoader")
+                    .ToDictionary(property => property.Name, property => property.GetValue(item));
+            }
+
+            var selectedFields = fields.Split(',').Select(f => f.Trim()).ToList();
+            var dictionary = new Dictionary<string, object?>();
+
+            foreach (var field in selectedFields)
+            {
+                var property = typeof(TModel).GetProperty(field, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                if (property != null && property.Name != "LazyLoader") // Exclude LazyLoader property
+                {
+                    var value = property.GetValue(item);
+                    dictionary.Add(field, value);
+                }
+            }
+
+            return dictionary;
+        }
+
+        // Pagination
+
+        private IQueryable<TModel> QueryPaginationBuilder(IQueryable<TModel> query, [FromQuery] Dictionary<string, string> queryParams)
+        {
+            queryParams.TryGetValue("range", out var range);
+            var totalItems = query.Count();
+
+            var (skip, take) = ParseRangeParameter(range, totalItems);
+            query = query.Skip(skip).Take(take);
+
+            AddPaginationHeaders(skip, take, totalItems);
+            return (query);
+        }
+
+        
+
         private (int skip, int take) ParseRangeParameter(string? range, int totalItems)
         {
             if (string.IsNullOrWhiteSpace(range))
@@ -276,16 +353,16 @@ namespace ApiLib.Controllers
         }
 
 
-        private void AddPaginationHeaders(HttpRequest request, HttpResponse response, int skip, int take, int totalItems)
+        private void AddPaginationHeaders(int skip, int take, int totalItems)
         {
-            response.Headers.AcceptRanges = $"{typeof(TModel).Name} {MaxPageSize}"; // Indique la pagination possible par blocs de 50
+            Response.Headers.AcceptRanges = $"{typeof(TModel).Name} {MaxPageSize}"; // Indique la pagination possible par blocs de 50
 
             // Définir le Content-Range
             int end = Math.Min(skip + take - 1, totalItems - 1);
-            response.Headers.ContentRange = $"{skip}-{end}/{totalItems}";
+            Response.Headers.ContentRange = $"{skip}-{end}/{totalItems}";
 
             // Construire les liens de navigation
-            var baseUrl = $"{request.Scheme}://{request.Host}{request.Path}";
+            var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
             List<string> links = [];
 
             if (skip > 0)
@@ -305,7 +382,7 @@ namespace ApiLib.Controllers
             links.Add($"<{baseUrl}?range=0-{take - 1}>; rel=\"first\"");
             links.Add($"<{baseUrl}?range={Math.Max(0, totalItems - take)}-{totalItems - 1}>; rel=\"last\"");
 
-            response.Headers.Link = string.Join(", ", links);
+            Response.Headers.Link = string.Join(", ", links);
         }
 
     }
