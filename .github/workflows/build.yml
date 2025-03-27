@@ -25,5 +25,8 @@ jobs:
     - name: Build ${{ matrix.projects }}
       run: dotnet build ./LibrApi/${{ matrix.projects }}/${{ matrix.projects }}.csproj --configuration Release --no-restore
 
-    - name: Run tests
-      run: dotnet test
+    - name: Run Api tests
+      run: dotnet test ./LibrApi/ApiLib.Tests/ApiLib.Tests.csproj --no-build
+
+    - name: Run Lib tests
+      run: dotnet test ./LibrApi/LibrApi.Tests/LibrApi.Tests.csproj --no-build
