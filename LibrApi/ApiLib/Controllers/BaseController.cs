@@ -125,7 +125,7 @@ namespace ApiLib.Controllers
 
         // GET: api/[Models]/5
         [HttpGet("{id}")]
-        public virtual async Task<ActionResult<TModel>> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
+        public virtual async Task<IActionResult> GetById(int id, [FromQuery] Dictionary<string, string> queryParams)
         {
             var model = await _context.Set<TModel>().FindAsync(id);
 
