@@ -11,7 +11,6 @@ jobs:
     strategy:
       matrix:
         projects: [ "ApiLib", "LibrApi" ]
-        tests_projects: [ "ApiLib.Tests", "LibrApi.Tests" ]
     steps:
     - uses: actions/checkout@v4
 
@@ -26,5 +25,5 @@ jobs:
     - name: Build ${{ matrix.projects }}
       run: dotnet build ./LibrApi/${{ matrix.projects }}/${{ matrix.projects }}.csproj --configuration Release --no-restore
 
-    - name: Test ${{ matrix.tests_projects }}
-      run: dotnet test ./LibrApi/${{ matrix.tests_projects }}/${{ matrix.tests_projects }}.csproj --configuration Release --no-build
+    - name: Run tests
+      run: dotnet test
