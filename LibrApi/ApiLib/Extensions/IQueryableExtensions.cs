@@ -7,6 +7,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Reflection.Metadata;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace ApiLib.Extensions
@@ -115,7 +117,7 @@ namespace ApiLib.Extensions
                     {
                         var member = Expression.Property(parameter, property);
                         var lowerBoundDate = Expression.Constant(dateValue);
-                        var upperBoundDate = Expression.Constant(dateValue.AddDays(1).AddTicks(-1)); // Fin de la journée
+                        var upperBoundDate = Expression.Constant(dateValue.AddDays(1).AddTicks(-1)); // fin de la journée
 
                         var greaterThanOrEqual = Expression.GreaterThanOrEqual(member, lowerBoundDate);
                         var lessThanOrEqual = Expression.LessThanOrEqual(member, upperBoundDate);
@@ -139,11 +141,10 @@ namespace ApiLib.Extensions
                 var lambda = Expression.Lambda<Func<T, bool>>(orExpression, parameter);
                 query = query.Where(lambda);
             }
-
             return query;
         }
 
-        public static IQueryable<T> ApplySearchFilter<T>(this IQueryable<T> query, string key, string value)
+        public static IQueryable<T> ApplySearch<T>(this IQueryable<T> query, string key, string value)
         {
             var parameter = Expression.Parameter(typeof(T), "x");
             var property = typeof(T).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance)
@@ -151,22 +152,21 @@ namespace ApiLib.Extensions
 
             var expressions = new List<Expression>();
 
-            // Handle wildcard searches (*napoli*)
+            // handle wildcard searches (*something*)
             if (value.Contains("*"))
             {
-                var searchValue = value.Replace("*", "%"); // Convert * to SQL-style wildcard
                 var member = Expression.Property(parameter, property);
                 var method = typeof(string).GetMethod("Contains", new[] { typeof(string) });
 
                 if (method != null)
                 {
-                    var constant = Expression.Constant(searchValue.Trim('%'));
+                    var constant = Expression.Constant(value.Trim('*'));
                     expressions.Add(Expression.Call(member, method, constant));
                 }
             }
             else
             {
-                // Handle multiple values (e.g., type=pizza,pasta)
+                // handle multiple values (type=pizza,pasta)
                 var values = value.Split(',');
 
                 foreach (var val in values)
@@ -189,7 +189,5 @@ namespace ApiLib.Extensions
 
             return query;
         }
-
-
     }
 }
